@@ -23,7 +23,7 @@ def prepare(args):
 def train(args):
     with open(args.data_path, 'wb') as fin:
         dataset = pickle.load(fin)
-    
+        
 
 
 if __name__ == '__main__':
