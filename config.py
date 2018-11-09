@@ -15,4 +15,7 @@ class Config:
     cuda = True
     min_count = 2
     embedding_size = 128
-
+    out_channels = 128
+    model = 'textcnn'
+    max_sentence_size = 500
+    batch_size = 32

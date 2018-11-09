@@ -5,39 +5,52 @@ import torch.nn.functional as F
 
 
 class TextCNN(nn.Module):
-    def __init__(self, opts, label_num):
+    def __init__(self, opts, pad_sentence_size, label_num):
         super(TextCNN, self).__init__()
         self.opts = opts
         self.label_num = label_num
+        self.pad_sentence_size = pad_sentence_size
         # self.out_channel = config.out_channel
-        self.conv3 = nn.Conv2d(1, 1, (3, self.opts.word_embedding_dimension))
-        self.conv4 = nn.Conv2d(1, 1, (4, self.opts.word_embedding_dimension))
-        self.conv5 = nn.Conv2d(1, 1, (5, self.opts.word_embedding_dimension))
         
-        self.Max3_pool = nn.MaxPool2d((self.opts.sentence_max_size-3+1, 1))
-        self.Max4_pool = nn.MaxPool2d((self.opts.sentence_max_size-4+1, 1))
-        self.Max5_pool = nn.MaxPool2d((self.opts.sentence_max_size-5+1, 1))
+        self.conv3_Modules = nn.Sequential(
+                                nn.Conv2d(in_channels=1,
+                                          out_channels=self.opts.out_channels,
+                                          kernel_size=(3, self.opts.embedding_size)),
+                                nn.ReLU(),
+                                nn.MaxPool2d((self.get_feature_map_size(3, self.pad_sentence_size), 1)),
+        )
+        self.conv4_Modules = nn.Sequential(
+                                nn.Conv2d(in_channels=1,
+                                          out_channels=self.opts.out_channels,
+                                          kernel_size=(4, self.opts.embedding_size)),
+                                nn.ReLU(),
+                                nn.MaxPool2d((self.get_feature_map_size(4, self.pad_sentence_size), 1)),
+        )
         
-        self.linear1 = nn.Linear(3, self.label_num)
+        self.conv5_Modules = nn.Sequential(
+                                nn.Conv2d(in_channels=1,
+                                          out_channels=self.opts.out_channels,
+                                          kernel_size=(5, self.opts.embedding_size)),
+                                nn.ReLU(),
+                                nn.MaxPool2d((self.get_feature_map_size(5, self.pad_sentence_size), 1)),
+        )
 
-    def forward(self, x):
-        batch = x.shape[0]
-        # Convolution
-        x1 = F.relu(self.conv3(x))
-        x2 = F.relu(self.conv4(x))
-        x3 = F.relu(self.conv5(x))
+        self.lin = nn.Linear(3*self.out_channels, self.label_num)
 
-        # Pooling
-        x1 = self.Max3_pool(x1)
-        x2 = self.Max4_pool(x2)
-        x3 = self.Max5_pool(x3)
+    @staticmethod
+    def get_feature_map_size(kernel_size, sentence_size, stride=1, padding=0):
+        return (sentence_size + 2*padding - kernel_size) / stride + 1
 
-        # capture and concatenate the features
-        x = torch.cat((x1, x2, x3), -1)
-        x = x.view(batch, 1, -1)
+    def forward(self, batch):
 
-        # project the features to the labels
-        x = self.linear1(x)
+        x1 = self.conv3_Modules(batch).view(-1, self.out_channels)
+        x2 = self.conv4_Modules(batch).view(-1, self.out_channels)
+        x3 = self.conv5_Modules(batch).view(-1, self.out_channels)
+
+        x = torch.cat((x1, x2, x3), 1)
+
+
+        x = self.lin(x)
         x = x.view(-1, self.label_num)
 
         return x

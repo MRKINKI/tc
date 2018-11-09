@@ -6,6 +6,7 @@ import os
 import pickle
 from data import Dataset
 from config import Config
+from main.dl.dlmodel import DLModel
 
 
 def prepare(args):
@@ -21,9 +22,18 @@ def prepare(args):
 
 
 def train(args):
+    
     with open(args.data_path, 'wb') as fin:
         dataset = pickle.load(fin)
         
+    model = DLModel(args, dataset.src_vocab.embeddings)
+    
+    if args.cuda:
+        model.cuda()
+        
+    for tgt_field in dataset.tgt_info:
+        for batch, pad_sentence_size in dataset.gen_mini_batches('train', args.batch_size, tgt_field):
+            model.update(batch, pad_sentence_size)
 
 
 if __name__ == '__main__':
