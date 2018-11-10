@@ -7,19 +7,37 @@ from .textcnn import TextCNN
 
 
 class DLModel:
-    def __init__(self, opts, embedding=None, padding_idx=0):
+    def __init__(self, opts, tgt_num, embedding=None, padding_idx=0):
         
-        self.embedding = torch.nn.Embedding(embedding.size(0),
-                                            embedding.size(1),
-                                            padding_idx=padding_idx)
-        self.embedding.weight.data = embedding
+
+        self.opts = opts
         if opts.model == 'textcnn':
-            self.network = TextCNN()
+            self.network = TextCNN(opts, tgt_num, embedding)
+            
+        # parameters = [p for p in self.network.parameters() if p.requires_grad]
+        # self.optimizer = optim.Adamax(parameters,
+        #                        weight_decay=opt['weight_decay'])
+        self.optimizer = torch.optim.Adamax(self.network.parameters())
+    
+    # 词向量
+    def update(self, batch):
+        self.network.train()
+        src = [t['sentence_word_ids'] for t in batch]
+        # print([len(t) for t in src])
+        tgt = [t['tgt'] for t in batch]
         
-    
-    def update(self, batch, pad_sentence_size):
-        # self.network
-    
+        src = torch.LongTensor(src)
+        tgt = torch.LongTensor(tgt)
+        
+        if self.opts.cuda:
+            src = src.cuda()
+            tgt = tgt.cuda()
+        self.optimizer.zero_grad()
+        loss = self.network(src, tgt)
+        loss.backward()
+        self.optimizer.step()
+        
+        
     def cuda(self):
         self.network.cuda()
         

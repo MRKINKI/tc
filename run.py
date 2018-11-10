@@ -7,6 +7,7 @@ import pickle
 from data import Dataset
 from config import Config
 from main.dl.dlmodel import DLModel
+from time import time
 
 
 def prepare(args):
@@ -23,18 +24,25 @@ def prepare(args):
 
 def train(args):
     
-    with open(args.data_path, 'wb') as fin:
+    with open(args.data_path, 'rb') as fin:
         dataset = pickle.load(fin)
         
-    model = DLModel(args, dataset.src_vocab.embeddings)
-    
-    if args.cuda:
-        model.cuda()
-        
     for tgt_field in dataset.tgt_info:
+        model = DLModel(args, dataset.tgt_vocab[tgt_field].size(), dataset.src_vocab.embeddings)
+        print(tgt_field, dataset.tgt_vocab[tgt_field].size())
+        if args.cuda:
+            model.cuda()
+        t0 = time()
         for batch, pad_sentence_size in dataset.gen_mini_batches('train', args.batch_size, tgt_field):
-            model.update(batch, pad_sentence_size)
+            model.update(batch)
+        print(time() - t0)
+        break
 
 
 if __name__ == '__main__':
-    prepare(Config)
+    # prepare(Config)
+    train(Config)
+#    with open(Config.data_path, 'rb') as fin:
+#        dataset = pickle.load(fin)
+#    embedding1 = dataset.src_vocab.embeddings
+    # print(cc)

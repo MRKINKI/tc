@@ -77,13 +77,16 @@ class Dataset(object):
 
     def _dynamic_padding(self, batch_data, pad_id):
 
-        pad_sentence_size = min(self.max_sentence_size, 
-                                max([len(t['sentence_word_ids']) for t in batch_data]))
+        # pad_sentence_size = min(self.max_sentence_size, 
+        #                         max([len(t['sentence_word_ids']) for t in batch_data]))
+        pad_sentence_size = self.max_sentence_size
         
         for sub_batch_data in batch_data:
             ids = sub_batch_data['sentence_word_ids']
-            sub_batch_data['sentence_word_ids'] = ids + [pad_id] * (pad_sentence_size - len(ids))[:pad_sentence_size]
-
+            # print(len(ids), pad_sentence_size)
+            sub_batch_data['sentence_word_ids'] = ids + [pad_id] * (pad_sentence_size - len(ids))
+            sub_batch_data['sentence_word_ids'] = sub_batch_data['sentence_word_ids'][:pad_sentence_size]
+            # print(len(sub_batch_data['sentence_word_ids'] ))
         return batch_data, pad_sentence_size
 
     def word_iter(self, set_name=None):
@@ -106,14 +109,15 @@ class Dataset(object):
 
     def convert_to_ids(self, src_vocab, tgt_vocab):
 
-        for data_set in [self.train_set, self.dev_set, self.test_set]:
+        for idx, data_set in enumerate([self.train_set, self.dev_set, self.test_set]):
             if not len(data_set):
                 continue
             for sample in data_set:
-                sample['sentence_word_ids'] = src_vocab.word_vocab.convert_to_ids(sample['seg_content'])
-                for tgt_field in self.tgt_info:
-                    if tgt_field in sample:
-                        sample[tgt_field + '_id'] = tgt_vocab[tgt_field].get_id(sample[tgt_field])
+                sample['sentence_word_ids'] = src_vocab.convert_to_ids(sample['seg_content'])
+                if idx <= 1:
+                    for tgt_field in self.tgt_info:
+                        if tgt_field in sample:
+                            sample[tgt_field + '_id'] = tgt_vocab[tgt_field].get_id(sample[tgt_field])
 
     def gen_mini_batches(self, set_name, batch_size, tgt_field, shuffle=True):
 
